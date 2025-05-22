@@ -11,6 +11,7 @@ ENV BCFTOOLS="$SOFT/bcftools-br250520/bin/bcftools"
 ENV VCFTOOLS="$SOFT/vcftools-br250520/bin/vcftools"
 
 # Установка общих пакетов
+# Установка общих пакетов + Python
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -28,6 +29,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     automake \
     pkg-config \
     file \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Создание директории для ПО
@@ -60,8 +63,8 @@ RUN cd /tmp && \
     # Проверка установки
     ls -l $SOFT/htslib-br250520/lib/libhts.so || (echo "ERROR: libhts.so not found!" && exit 1)
 
-    
-ENV LD_LIBRARY_PATH="$SOFT/htslib-br250520/lib:$LD_LIBRARY_PATH"
+ENV LD_LIBRARY_PATH="/soft/htslib-br250520/lib:/soft/libdeflate-br250520/lib"
+
 
 #samtools v1.21
 RUN cd /tmp && \
@@ -71,7 +74,7 @@ RUN cd /tmp && \
     cd samtools-1.21 && \
     export CPPFLAGS="-I$SOFT/htslib-br250520/include -I$SOFT/libdeflate-br250520/include" && \
     export LDFLAGS="-L$SOFT/htslib-br250520/lib -L$SOFT/libdeflate-br250520/lib -Wl,-rpath,$SOFT/htslib-br250520/lib -Wl,-rpath,$SOFT/libdeflate-br240515/lib" && \
-    #export LIBS="-lhts -lz -lbz2 -llzma -lcurl -ldeflate" && \
+    export LIBS="-lhts -lz -lbz2 -llzma -lcurl -ldeflate" && \
     ./configure --prefix=$SOFT/samtools-br250520 --with-htslib=$SOFT/htslib-br250520 || (cat config.log && exit 1) && \
     make -j$(nproc) && make install &&\
     cd / && rm -rf /tmp/samtools-1.21
@@ -99,3 +102,12 @@ RUN cd /tmp && \
     make -j$(nproc) && make install && \
     rm -rf /tmp/vcftools &&\
     cd / && rm -rf /tmp/vcftools
+
+# Установка Python-библиотек
+RUN pip3 install --no-cache-dir pysam
+
+# Копирование Python-скрипта
+COPY VCF_creator.py /app/VCF_creator.py
+
+# Назначим рабочую директорию
+WORKDIR /app
